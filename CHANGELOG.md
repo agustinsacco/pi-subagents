@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- The RPC `subagent-async` status snapshot now includes the `model` and `thinking` level each background step runs on, so hosts can show which model a child actually chose. ([#2892](https://github.com/nicobailon/pi-subagents/issues/2892))
+
 ## [0.78.0] - 2026-10-12
 
 ### Highlights

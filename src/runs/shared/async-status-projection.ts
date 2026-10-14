@@ -64,6 +64,10 @@ export interface AsyncStatusSnapshotNode {
 	updatedAt?: number;
 	endedAt?: number;
 	activity?: AsyncStatusSnapshotActivity;
+	/** Step nodes: the model the child runs on, as its status reports it. */
+	model?: string;
+	/** Step nodes: the child's thinking level, when its status reports one. */
+	thinking?: ThinkingLevel;
 	hostStep?: AsyncStatusSnapshotHostStep;
 	children?: AsyncStatusSnapshotNode[];
 }
@@ -221,6 +225,14 @@ function activityFor(source: {
 	return Object.keys(activity).length ? activity : undefined;
 }
 
+/** The first source that reports a model wins; a lane's own child reports before its roster entry. */
+function setStepModel(node: AsyncStatusSnapshotNode, ctx: ProjectionContext, ...sources: Array<{ model?: string; thinking?: string } | undefined>): void {
+	const model = publicOptionalText(sources.find((source) => source?.model)?.model, ctx.caps.maxStringLength);
+	if (model) node.model = model;
+	const thinking = childThinkingLevel(...sources);
+	if (thinking) node.thinking = thinking;
+}
+
 function appendBoundedChildren(children: AsyncStatusSnapshotNode[], source: readonly AsyncStatusSnapshotNode[], ctx: ProjectionContext): void {
 	const remaining = Math.max(0, ctx.caps.maxChildrenPerNode - children.length);
 	children.push(...source.slice(0, remaining));
@@ -252,6 +264,7 @@ function projectStep(step: AsyncJobStep | NestedStepSummary, index: number, dept
 		...(terminalState(state) && endedAt !== undefined ? { endedAt } : {}),
 		...(activity ? { activity } : {}),
 	};
+	setStepModel(node, ctx, step);
 	if (depth < ctx.caps.maxDepth && step.children?.length) {
 		const nested = step.children.map((child, childIndex) => projectNestedRun(child, childIndex, depth + 1, ctx));
 		const bounded: AsyncStatusSnapshotNode[] = [];
@@ -402,6 +415,7 @@ function projectMaterializedStep(step: AsyncJobStep, index: number, child: Async
 	const activity = laneActivity || selfActivity || live.activity ? { ...laneActivity, ...selfActivity, ...live.activity } : undefined;
 	const node: AsyncStatusSnapshotNode = { ...live, id, kind: "step", label };
 	if (activity) node.activity = activity;
+	setStepModel(node, ctx, selfStep, step);
 	return node;
 }
 
