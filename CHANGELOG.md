@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Replying to a supervisor request that was already answered, expired or withdrawn now lists the requests that are pending instead, so the parent can answer a child's newer request without another `pending` call. ([#2894](https://github.com/nicobailon/pi-subagents/issues/2894))
+
 ## [0.78.0] - 2026-10-12
 
 ### Highlights
