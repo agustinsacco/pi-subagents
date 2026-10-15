@@ -434,6 +434,7 @@ describe("async status projection", () => {
 				steps: [
 					{ agent: "worker", status: "running", model: "openai-codex/gpt-6.1-sol:medium", thinking: "medium" },
 					{ agent: "scout", status: "pending" },
+					{ agent: "planner", status: "running", model: "pi-claude-cli/claude-haiku-4-5:low" },
 				],
 			}),
 			materializedWorkflow,
@@ -442,8 +443,9 @@ describe("async status projection", () => {
 
 		const fanout = snapshot.runs.find((run) => run.id === "fanout");
 		assert.deepEqual(fanout?.children?.map(({ model, thinking }) => ({ model, thinking })), [
-			{ model: "openai-codex/gpt-6.1-sol:medium", thinking: "medium" },
+			{ model: "openai-codex/gpt-6.1-sol", thinking: "medium" },
 			{ model: undefined, thinking: undefined },
+			{ model: "pi-claude-cli/claude-haiku-4-5", thinking: "low" },
 		]);
 		const lane = snapshot.runs.find((run) => run.id === "wf-1")?.children?.find((child) => child.id === "rev-r");
 		assert.equal(lane?.model, "anthropic/claude-haiku-4-5");

@@ -1,6 +1,6 @@
 import { sanitizeDisplayText, truncateDisplayText } from "../../shared/display-text.ts";
 import { formatModelThinking } from "../../shared/formatters.ts";
-import { childThinkingLevel, type ThinkingLevel } from "../../shared/model-info.ts";
+import { childThinkingLevel, splitKnownThinkingSuffix, type ThinkingLevel } from "../../shared/model-info.ts";
 import type { AsyncJobState, AsyncJobStep, HostStepFreshness, HostStepMonitorKind, HostStepNode, HostStepState, HostStepVerdict, NestedRunSummary, NestedStepSummary, SubagentRunMode, WorkflowGraphSnapshot, WorkflowPreflightLane, WorkflowPreflight } from "../../shared/types.ts";
 import { HOST_STEP_MAX_COUNT, HOST_STEP_MAX_DETAIL_CHARS, HOST_STEP_MAX_LABEL_CHARS, HOST_STEP_MAX_PROVIDER_CHARS, HOST_STEP_MAX_REASON_CHARS, HOST_STEP_MAX_REF_CHARS, HOST_STEP_MAX_ROLE_CHARS, HOST_STEP_MAX_TARGET_CHARS, hostStepReportName, parseHostStepNode, validHostStepNodes } from "./host-step-status.ts";
 import { workflowPreflightLaneForRuntimeKey } from "../../workflows/workflow-preflight.ts";
@@ -225,11 +225,17 @@ function activityFor(source: {
 	return Object.keys(activity).length ? activity : undefined;
 }
 
-/** The first source that reports a model wins; a lane's own child reports before its roster entry. */
+/**
+ * The first source that reports a model wins; a lane's own child reports before its roster entry.
+ * A launch model can carry a thinking suffix (`provider/id:low`) until the child's first reply; the
+ * node reports the bare model and keeps the level in `thinking`.
+ */
 function setStepModel(node: AsyncStatusSnapshotNode, ctx: ProjectionContext, ...sources: Array<{ model?: string; thinking?: string } | undefined>): void {
-	const model = publicOptionalText(sources.find((source) => source?.model)?.model, ctx.caps.maxStringLength);
+	const reported = sources.find((source) => source?.model)?.model;
+	const parsed = reported ? splitKnownThinkingSuffix(reported) : undefined;
+	const model = publicOptionalText(parsed?.baseModel, ctx.caps.maxStringLength);
 	if (model) node.model = model;
-	const thinking = childThinkingLevel(...sources);
+	const thinking = childThinkingLevel(...sources, { thinking: parsed?.thinkingSuffix.slice(1) });
 	if (thinking) node.thinking = thinking;
 }
 
